@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Performance Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #0d1424;
+    --card: #111827;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent5: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --glow: rgba(59,130,246,0.15);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 90% 80%, rgba(244,114,182,0.05) 0%, transparent 50%);
+    pointer-events:none; z-index:0;
+  }
+
+  /* HEADER */
+  header {
+    position: relative; z-index:10;
+    padding: 28px 40px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items:center; justify-content:space-between;
+    background: linear-gradient(180deg, rgba(59,130,246,0.06) 0%, transparent 100%);
+  }
+  .logo { display:flex; align-items:center; gap:14px; }
+  .logo-icon {
+    width:42px; height:42px; border-radius:10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent5));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Syne',sans-serif; font-weight:800; font-size:18px; color:#fff;
+    box-shadow: 0 0 20px rgba(59,130,246,0.4);
+  }
+  h1 { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; color:var(--text); letter-spacing:-0.5px; }
+  h1 span { color: var(--accent); }
+  .badge { font-size:11px; color:var(--muted); background:var(--card); border:1px solid var(--border); padding:4px 10px; border-radius:20px; }
+
+  /* TABS */
+  .tabs { display:flex; gap:4px; padding: 16px 40px 0; position:relative; z-index:10; }
+  .tab {
+    padding: 8px 20px; border-radius:8px 8px 0 0; cursor:pointer;
+    font-size:12px; font-family:'Syne',sans-serif; font-weight:600; letter-spacing:0.5px;
+    color: var(--muted); border: 1px solid transparent; border-bottom:none;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); background: var(--card); }
+  .tab.active { color: var(--accent); background: var(--card); border-color: var(--border); }
+
+  /* MAIN */
+  main { padding: 0 40px 40px; position:relative; z-index:10; }
+  .panel { display:none; }
+  .panel.active { display:block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+
+  /* KPI GRID */
+  .kpi-grid { display:grid; grid-template-columns: repeat(5,1fr); gap:16px; padding: 20px 0 24px; }
+  .kpi {
+    background: var(--card); border:1px solid var(--border); border-radius:14px;
+    padding: 20px; position:relative; overflow:hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi:hover { transform:translateY(-3px); box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+  .kpi::after {
+    content:''; position:absolute; bottom:0; left:0; right:0; height:3px;
+    border-radius:0 0 14px 14px;
+  }
+  .kpi:nth-child(1)::after { background: var(--accent); }
+  .kpi:nth-child(2)::after { background: var(--accent2); }
+  .kpi:nth-child(3)::after { background: var(--accent3); }
+  .kpi:nth-child(4)::after { background: var(--accent4); }
+  .kpi:nth-child(5)::after { background: var(--accent5); }
+  .kpi-label { font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
+  .kpi-value { font-family:'Syne',sans-serif; font-weight:800; font-size:28px; }
+  .kpi:nth-child(1) .kpi-value { color: var(--accent); }
+  .kpi:nth-child(2) .kpi-value { color: var(--accent2); }
+  .kpi:nth-child(3) .kpi-value { color: var(--accent3); }
+  .kpi:nth-child(4) .kpi-value { color: var(--accent4); }
+  .kpi:nth-child(5) .kpi-value { color: var(--accent5); }
+  .kpi-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  /* CHART GRID */
+  .chart-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+  .chart-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:20px; }
+  .chart-grid-12 { display:grid; grid-template-columns:1.4fr 1fr; gap:20px; margin-bottom:20px; }
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border); border-radius:14px;
+    padding: 22px; position:relative;
+  }
+  .chart-title {
+    font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
+    color: var(--text); margin-bottom:4px; letter-spacing:-0.2px;
+  }
+  .chart-subtitle { font-size:10px; color: var(--muted); margin-bottom:18px; }
+  .chart-wrap { position:relative; }
+  .chart-wrap canvas { max-height: 220px !important; }
+  .chart-wrap.tall canvas { max-height: 280px !important; }
+  .chart-wrap.short canvas { max-height: 160px !important; }
+
+  /* INSIGHT PILLS */
+  .insight { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .pill {
+    font-size:10px; padding:4px 10px; border-radius:20px;
+    background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.25); color: var(--accent);
+  }
+  .pill.pink { background:rgba(244,114,182,0.1); border-color:rgba(244,114,182,0.25); color: var(--accent2); }
+  .pill.green { background:rgba(52,211,153,0.1); border-color:rgba(52,211,153,0.25); color: var(--accent3); }
+  .pill.yellow { background:rgba(251,191,36,0.1); border-color:rgba(251,191,36,0.25); color: var(--accent4); }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { text-align:left; padding:10px 14px; color:var(--muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid var(--border); }
+  td { padding:10px 14px; border-bottom:1px solid rgba(30,45,69,0.5); color:var(--text); }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(59,130,246,0.04); }
+  .rank-1 { color:var(--accent4); font-weight:700; }
+  .rank-badge { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; font-size:11px; font-weight:700; background:rgba(59,130,246,0.15); color:var(--accent); }
+  .bar-inline { display:inline-block; height:6px; border-radius:3px; background:var(--accent); vertical-align:middle; margin-left:8px; opacity:0.7; }
+
+  /* SCATTER LEGEND */
+  .legend { display:flex; gap:16px; margin-bottom:12px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+  .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+  /* SQL SECTION */
+  .sql-block {
+    background: #0a0f1a; border:1px solid var(--border); border-radius:12px;
+    padding:20px; font-family:'Space Mono',monospace; font-size:12px;
+    color: #94a3b8; overflow-x:auto; margin-bottom:20px;
+    border-left: 3px solid var(--accent);
+  }
+  .sql-block .kw { color: #60a5fa; }
+  .sql-block .fn { color: #34d399; }
+  .sql-block .cm { color: #4b5563; font-style:italic; }
+  .sql-block .str { color: #fbbf24; }
+  .sql-section-title { font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--text); margin: 24px 0 10px; }
+  .sql-result { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:20px; }
+
+  /* PYTHON CODE */
+  .code-block {
+    background: #050810; border:1px solid var(--border); border-radius:12px;
+    padding:20px; font-family:'Space Mono',monospace; font-size:11px; line-height:1.7;
+    color: #94a3b8; overflow-x:auto; margin-bottom:20px;
+    border-left: 3px solid var(--accent3);
+  }
+  .code-block .kw { color:#c084fc; }
+  .code-block .fn { color:#34d399; }
+  .code-block .cm { color:#4b5563; font-style:italic; }
+  .code-block .st { color:#fbbf24; }
+  .code-block .nb { color:#f472b6; }
+  .code-block pre { white-space:pre-wrap; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">SP</div>
+    <div>
+      <h1>Student <span>Performance</span> Analytics</h1>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">1,000 tələbə · 3 fənn · 5 dəyişən</div>
+    </div>
+  </div>
+  <div class="badge">Python · SQL · Power BI</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">Overview</div>
+  <div class="tab" onclick="switchTab('breakdown')">Breakdown</div>
+  <div class="tab" onclick="switchTab('scatter')">Scatter</div>
+  <div class="tab" onclick="switchTab('sql')">SQL Sorğular</div>
+  <div class="tab" onclick="switchTab('python')">Python Kodu</div>
+</div>
+
+<main>
+
+<!-- ═══════════════════ OVERVIEW ═══════════════════ -->
+<div class="panel active" id="panel-overview">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Tələbə</div><div class="kpi-value">1,000</div><div class="kpi-sub">dataset</div></div>
+    <div class="kpi"><div class="kpi-label">Ort. Riyaziyyat</div><div class="kpi-value">66.1</div><div class="kpi-sub">orta bal</div></div>
+    <div class="kpi"><div class="kpi-label">Ort. Oxuma</div><div class="kpi-value">69.2</div><div class="kpi-sub">orta bal</div></div>
+    <div class="kpi"><div class="kpi-label">Ort. Yazı</div><div class="kpi-value">68.1</div><div class="kpi-sub">orta bal</div></div>
+    <div class="kpi"><div class="kpi-label">Kecid Faizi</div><div class="kpi-value">71.5%</div><div class="kpi-sub">≥60 bal</div></div>
+  </div>
+
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Cins üzrə Orta Ballar</div>
+      <div class="chart-subtitle">Kişi vs Qadın — 3 fənn müqayisəsi</div>
+      <div class="chart-wrap"><canvas id="genderChart"></canvas></div>
+      <div class="insight">
+        <span class="pill">Kişi riyaziyyatda +5.1 üstün</span>
+        <span class="pill pink">Qadın oxuma/yazıda +7-9 üstün</span>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Test Hazırlığının Təsiri</div>
+      <div class="chart-subtitle">Kursu tamamlayanlar vs tamamlamayanlar</div>
+      <div class="chart-wrap"><canvas id="prepChart"></canvas></div>
+      <div class="insight">
+        <span class="pill green">Tamamlayanlar ort. +7.6 bal yuxarı</span>
+        <span class="pill yellow">Yazıda ən böyük fərq: +9.9</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Valideyn Təhsili → Uşaq Nəticəsi</div>
+      <div class="chart-subtitle">Orta ümumi bal (6 kateqoriya)</div>
+      <div class="chart-wrap tall"><canvas id="eduChart"></canvas></div>
+      <div class="insight">
+        <span class="pill">Master dərəcəli: 73.6</span>
+        <span class="pill pink">Orta məktəb: 63.1 (ən aşağı)</span>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Qiymət Bölgüsü (A–F)</div>
+      <div class="chart-subtitle">1000 tələbənin faiz paylanması</div>
+      <div class="chart-wrap tall"><canvas id="gradeChart"></canvas></div>
+      <div class="insight">
+        <span class="pill pink">28.5% tələbə keçid edə bilməyib</span>
+        <span class="pill green">5.2% A qrupunda</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ BREAKDOWN ═══════════════════ -->
+<div class="panel" id="panel-breakdown">
+  <div style="height:20px"></div>
+  <div class="chart-grid-3">
+    <div class="chart-card">
+      <div class="chart-title">Etnik Qrup Sıralaması</div>
+      <div class="chart-subtitle">Orta ümumi bal — Window Func ilə RANK</div>
+      <div class="chart-wrap"><canvas id="groupChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Nahar Tipi Təsiri</div>
+      <div class="chart-subtitle">Standard vs Free/Reduced lunch</div>
+      <div class="chart-wrap"><canvas id="lunchChart"></canvas></div>
+      <div class="insight">
+        <span class="pill">Standard: 70.8</span>
+        <span class="pill pink">Free/Reduced: 62.2 (−8.6)</span>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Kecid Faizi (Cins)</div>
+      <div class="chart-subtitle">≥60 bal şərti ilə hər fənn üçün</div>
+      <div class="chart-wrap"><canvas id="passChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:20px">
+    <div class="chart-title">Nahar + Test Hazırlığı — 4 Seqment Analizi</div>
+    <div class="chart-subtitle">Ən yaxşı kombinasiyadan ən pisə qədər</div>
+    <div class="chart-wrap short"><canvas id="matrixChart"></canvas></div>
+    <div class="insight">
+      <span class="pill green">Standard + Completed: 75.5 (ən yaxşı)</span>
+      <span class="pill pink">Free/Reduced + None: 58.9 (ən aşağı, −16.6 fərq)</span>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">Etnik Qrup üzrə Top Sıralama Cədvəli</div>
+    <div class="chart-subtitle">SQL RANK() Window Function nəticəsi</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Rank</th><th>Qrup</th><th>Riyaziyyat</th><th>Oxuma</th><th>Yazı</th><th>Ümumi Ort.</th><th>Vizual</th></tr></thead>
+        <tbody>
+          <tr><td><span class="rank-badge" style="background:rgba(251,191,36,0.2);color:var(--accent4)">1</span></td><td>group E</td><td>73.8</td><td>73.0</td><td>71.4</td><td class="rank-1">72.8</td><td><span class="bar-inline" style="width:100px"></span></td></tr>
+          <tr><td><span class="rank-badge">2</span></td><td>group D</td><td>67.4</td><td>70.0</td><td>70.2</td><td>69.2</td><td><span class="bar-inline" style="width:88px"></span></td></tr>
+          <tr><td><span class="rank-badge">3</span></td><td>group C</td><td>64.5</td><td>69.1</td><td>67.8</td><td>67.1</td><td><span class="bar-inline" style="width:82px"></span></td></tr>
+          <tr><td><span class="rank-badge">4</span></td><td>group B</td><td>63.5</td><td>67.4</td><td>65.6</td><td>65.5</td><td><span class="bar-inline" style="width:78px"></span></td></tr>
+          <tr><td><span class="rank-badge">5</span></td><td>group A</td><td>61.6</td><td>64.7</td><td>62.7</td><td>63.0</td><td><span class="bar-inline" style="width:72px"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCATTER ═══════════════════ -->
+<div class="panel" id="panel-scatter">
+  <div style="height:20px"></div>
+  <div class="chart-grid-12">
+    <div class="chart-card">
+      <div class="chart-title">Riyaziyyat vs Oxuma Bal Sxemi</div>
+      <div class="chart-subtitle">300 tələbənin nümunəsi — cinslər üzrə rənglənib</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Kişi</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div>Qadın</div>
+      </div>
+      <div class="chart-wrap" style="position:relative"><canvas id="scatterChart" style="max-height:320px!important"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Korrelyasiya Matrisi</div>
+      <div class="chart-subtitle">3 fənn arasındakı əlaqə</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+        <div style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Riyaziyyat<br>× Oxuma</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:var(--accent3)">0.82</div>
+          <div style="font-size:10px;color:var(--accent3);margin-top:4px">Güclü</div>
+        </div>
+        <div style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Riyaziyyat<br>× Yazı</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:var(--accent)">0.80</div>
+          <div style="font-size:10px;color:var(--accent);margin-top:4px">Güclü</div>
+        </div>
+        <div style="background:rgba(244,114,182,0.15);border:1px solid rgba(244,114,182,0.3);border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Oxuma<br>× Yazı</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:var(--accent2)">0.95</div>
+          <div style="font-size:10px;color:var(--accent2);margin-top:4px">Çox Güclü</div>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <div class="chart-title" style="margin-bottom:10px">Top 5 Tələbə (100/100/100)</div>
+        <table style="font-size:11px">
+          <thead><tr><th>ID</th><th>Cins</th><th>Qrup</th><th>Ort.</th></tr></thead>
+          <tbody>
+            <tr><td>459</td><td>Qadın</td><td>group E</td><td class="rank-1">100.0</td></tr>
+            <tr><td>917</td><td>Kişi</td><td>group E</td><td class="rank-1">100.0</td></tr>
+            <tr><td>963</td><td>Qadın</td><td>group E</td><td class="rank-1">100.0</td></tr>
+            <tr><td>115</td><td>Qadın</td><td>group E</td><td>99.7</td></tr>
+            <tr><td>180</td><td>Qadın</td><td>group D</td><td>99.0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SQL ═══════════════════ -->
+<div class="panel" id="panel-sql">
+  <div style="height:20px"></div>
+
+  <div class="sql-section-title">1. Cinslər üzrə orta ballar</div>
+  <div class="sql-block"><span class="kw">SELECT</span> gender,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(math_score),<span class="nb">2</span>)    <span class="kw">AS</span> avg_math,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(reading_score),<span class="nb">2</span>) <span class="kw">AS</span> avg_reading,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(writing_score),<span class="nb">2</span>) <span class="kw">AS</span> avg_writing,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(average_score),<span class="nb">2</span>)  <span class="kw">AS</span> avg_total
+<span class="kw">FROM</span> students
+<span class="kw">GROUP BY</span> gender
+<span class="kw">ORDER BY</span> avg_total <span class="kw">DESC</span>;</div>
+  <div class="sql-result">
+    <table><thead><tr><th>gender</th><th>avg_math</th><th>avg_reading</th><th>avg_writing</th><th>avg_total</th></tr></thead>
+    <tbody>
+      <tr><td>female</td><td>63.63</td><td>72.61</td><td>72.47</td><td>69.57</td></tr>
+      <tr><td>male</td><td>68.73</td><td>65.47</td><td>63.31</td><td>65.84</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sql-section-title">2. Test hazırlığının hər fənn üzrə təsiri</div>
+  <div class="sql-block"><span class="kw">SELECT</span> test_prep,
+       <span class="fn">COUNT</span>(*) <span class="kw">AS</span> student_count,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(math_score),<span class="nb">2</span>) <span class="kw">AS</span> avg_math,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(reading_score),<span class="nb">2</span>) <span class="kw">AS</span> avg_reading,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(average_score),<span class="nb">2</span>) <span class="kw">AS</span> avg_total
+<span class="kw">FROM</span> students
+<span class="kw">GROUP BY</span> test_prep;</div>
+  <div class="sql-result">
+    <table><thead><tr><th>test_prep</th><th>student_count</th><th>avg_math</th><th>avg_reading</th><th>avg_total</th></tr></thead>
+    <tbody>
+      <tr><td>completed</td><td>358</td><td>69.70</td><td>73.89</td><td>72.67</td></tr>
+      <tr><td>none</td><td>642</td><td>64.08</td><td>66.53</td><td>65.04</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sql-section-title">3. Etnik qrup sıralaması — RANK() Window Function</div>
+  <div class="sql-block"><span class="kw">SELECT</span> race_ethnicity,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(average_score),<span class="nb">2</span>) <span class="kw">AS</span> avg_total,
+       <span class="fn">RANK</span>() <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> <span class="fn">AVG</span>(average_score) <span class="kw">DESC</span>) <span class="kw">AS</span> rank_overall
+<span class="kw">FROM</span> students
+<span class="kw">GROUP BY</span> race_ethnicity
+<span class="kw">ORDER BY</span> rank_overall;</div>
+  <div class="sql-result">
+    <table><thead><tr><th>race_ethnicity</th><th>avg_total</th><th>rank_overall</th></tr></thead>
+    <tbody>
+      <tr><td>group E</td><td>72.75</td><td>1</td></tr>
+      <tr><td>group D</td><td>69.18</td><td>2</td></tr>
+      <tr><td>group C</td><td>67.13</td><td>3</td></tr>
+      <tr><td>group B</td><td>65.47</td><td>4</td></tr>
+      <tr><td>group A</td><td>62.99</td><td>5</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sql-section-title">4. CTE: Hər valideyn qrupunda ən yaxşı tələbə</div>
+  <div class="sql-block"><span class="kw">WITH</span> ranked <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> *,
+           <span class="fn">RANK</span>() <span class="kw">OVER</span> (
+               <span class="kw">PARTITION BY</span> parental_education
+               <span class="kw">ORDER BY</span> average_score <span class="kw">DESC</span>
+           ) <span class="kw">AS</span> rnk
+    <span class="kw">FROM</span> students
+)
+<span class="kw">SELECT</span> student_id, gender, parental_education,
+       <span class="fn">ROUND</span>(average_score,<span class="nb">2</span>) <span class="kw">AS</span> avg_score
+<span class="kw">FROM</span> ranked
+<span class="kw">WHERE</span> rnk = <span class="nb">1</span>
+<span class="kw">ORDER BY</span> avg_score <span class="kw">DESC</span>;</div>
+
+  <div class="sql-section-title">5. Nahar + Test hazırlığı kombinasiyası</div>
+  <div class="sql-block"><span class="kw">SELECT</span> lunch, test_prep,
+       <span class="fn">COUNT</span>(*) <span class="kw">AS</span> students,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(average_score),<span class="nb">2</span>) <span class="kw">AS</span> avg_score
+<span class="kw">FROM</span> students
+<span class="kw">GROUP BY</span> lunch, test_prep
+<span class="kw">ORDER BY</span> avg_score <span class="kw">DESC</span>;</div>
+  <div class="sql-result">
+    <table><thead><tr><th>lunch</th><th>test_prep</th><th>students</th><th>avg_score</th></tr></thead>
+    <tbody>
+      <tr><td>standard</td><td>completed</td><td>227</td><td class="rank-1">75.51</td></tr>
+      <tr><td>standard</td><td>none</td><td>418</td><td>68.30</td></tr>
+      <tr><td>free/reduced</td><td>completed</td><td>131</td><td>67.76</td></tr>
+      <tr><td>free/reduced</td><td>none</td><td>224</td><td>58.95</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<!-- ═══════════════════ PYTHON ═══════════════════ -->
+<div class="panel" id="panel-python">
+  <div style="height:20px"></div>
+  <div class="code-block"><pre><span class="cm"># ── Student Performance — Python EDA ──────────────────</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">import</span> matplotlib.pyplot <span class="kw">as</span> plt
+<span class="kw">import</span> seaborn <span class="kw">as</span> sns
+
+<span class="cm"># 1. Yüklə və hazırla</span>
+df = pd.<span class="fn">read_excel</span>(<span class="st">"performancepivot.xlsx"</span>, sheet_name=<span class="st">"StudentsPerformance"</span>)
+df.columns = [<span class="st">'gender'</span>,<span class="st">'race'</span>,<span class="st">'parental_edu'</span>,<span class="st">'lunch'</span>,
+              <span class="st">'test_prep'</span>,<span class="st">'math'</span>,<span class="st">'reading'</span>,<span class="st">'writing'</span>]
+df[<span class="st">'average'</span>] = (df[<span class="st">'math'</span>] + df[<span class="st">'reading'</span>] + df[<span class="st">'writing'</span>]) / <span class="nb">3</span>
+df[<span class="st">'grade'</span>] = pd.<span class="fn">cut</span>(df[<span class="st">'average'</span>], bins=[<span class="nb">0,60,70,80,90,100</span>],
+                      labels=[<span class="st">'F','D','C','B','A'</span>])
+
+<span class="cm"># 2. EDA nəticələri (1000 sətir, 0 null)</span>
+<span class="nb">print</span>(df[[<span class="st">'math'</span>,<span class="st">'reading'</span>,<span class="st">'writing'</span>]].<span class="fn">describe</span>().<span class="fn">round</span>(<span class="nb">2</span>))
+
+<span class="cm"># 3. Korrelyasiya (oxuma×yazı = 0.95!)</span>
+corr = df[[<span class="st">'math'</span>,<span class="st">'reading'</span>,<span class="st">'writing'</span>]].<span class="fn">corr</span>()
+
+<span class="cm"># 4. Cinslər üzrə müqayisə</span>
+gender_stats = df.<span class="fn">groupby</span>(<span class="st">'gender'</span>)[[<span class="st">'math'</span>,<span class="st">'reading'</span>,<span class="st">'writing'</span>]].<span class="fn">mean</span>()
+<span class="cm"># female: math=63.6, reading=72.6, writing=72.5
+# male:   math=68.7, reading=65.5, writing=63.3</span>
+
+<span class="cm"># 5. Test hazırlığı təsiri</span>
+prep_impact = df.<span class="fn">groupby</span>(<span class="st">'test_prep'</span>)[<span class="st">'average'</span>].<span class="fn">mean</span>()
+<span class="cm"># completed: 72.67 (+7.6 vs none)</span>
+
+<span class="cm"># 6. Valideyn təhsili — ən güclü predictor</span>
+edu_order = [<span class="st">'some high school'</span>,<span class="st">'high school'</span>,
+             <span class="st">"associate's degree"</span>,<span class="st">'some college'</span>,
+             <span class="st">"bachelor's degree"</span>,<span class="st">"master's degree"</span>]
+edu_avg = df.<span class="fn">groupby</span>(<span class="st">'parental_edu'</span>)[<span class="st">'average'</span>].<span class="fn">mean</span>().<span class="fn">reindex</span>(edu_order)
+<span class="cm"># 63.1 → 73.6 (aşağıdan yuxarı artım)</span>
+
+<span class="cm"># 7. Vizuallaşdırma — Seaborn boxplot</span>
+fig, axes = plt.<span class="fn">subplots</span>(<span class="nb">2</span>, <span class="nb">3</span>, figsize=(<span class="nb">18,10</span>))
+sns.<span class="fn">boxplot</span>(data=df, x=<span class="st">'race'</span>, y=<span class="st">'math'</span>,
+            palette=<span class="st">'husl'</span>, ax=axes[<span class="nb">0</span>,<span class="nb">0</span>])
+sns.<span class="fn">violinplot</span>(data=df, x=<span class="st">'gender'</span>, y=<span class="st">'average'</span>,
+               palette=[<span class="st">'#6c63ff'</span>,<span class="st">'#ff6584'</span>], ax=axes[<span class="nb">0</span>,<span class="nb">1</span>])
+sns.<span class="fn">heatmap</span>(corr, annot=<span class="nb">True</span>, cmap=<span class="st">'RdYlGn'</span>, ax=axes[<span class="nb">0</span>,<span class="nb">2</span>])
+plt.<span class="fn">tight_layout</span>()
+plt.<span class="fn">savefig</span>(<span class="st">'analysis.png'</span>, dpi=<span class="nb">150</span>)
+
+<span class="cm"># 8. Kecid faizi</span>
+<span class="kw">for</span> col <span class="kw">in</span> [<span class="st">'math'</span>,<span class="st">'reading'</span>,<span class="st">'writing'</span>]:
+    pct = (df[col] >= <span class="nb">60</span>).<span class="fn">mean</span>() * <span class="nb">100</span>
+    <span class="nb">print</span>(f<span class="st">"{col}: {pct:.1f}%"</span>)
+<span class="cm"># math: 67.7%, reading: 74.3%, writing: 71.9%</span></pre></div>
+
+  <div class="chart-card">
+    <div class="chart-title">Əsas Analitik Tapıntılar</div>
+    <div class="chart-subtitle">Python + SQL analizinin əsas nəticələri</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+      <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:16px">
+        <div style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:8px;font-size:12px">Cins Fərqi</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.8">
+          Kişilər riyaziyyatda orta 68.7 ball qazanır, qadınlar isə 63.6.<br>
+          Əksinə, qadınlar oxuma (72.6) və yazıda (72.5) kişiləri üstələyir.<br>
+          Qiymət fərqi: 7–9 bal aralığında.
+        </div>
+      </div>
+      <div style="background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.2);border-radius:10px;padding:16px">
+        <div style="color:var(--accent3);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:8px;font-size:12px">Test Hazırlığı</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.8">
+          Kursu tamamlayan 358 tələbə orta 72.67 bal alıb.<br>
+          Tamamlamayan 642 tələbə isə 65.04 — fərq 7.6 bal.<br>
+          Yazıda ən böyük fərq: +9.9 bal.
+        </div>
+      </div>
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:16px">
+        <div style="color:var(--accent4);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:8px;font-size:12px">Valideyn Təhsili</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.8">
+          Master dərəcəli valideynlərin uşaqları: 73.6 bal.<br>
+          Orta məktəb bitirmiş valideynlər: 63.1 — fərq 10.5 bal.<br>
+          Güclü pozitiv korrelyasiya var.
+        </div>
+      </div>
+      <div style="background:rgba(244,114,182,0.06);border:1px solid rgba(244,114,182,0.2);border-radius:10px;padding:16px">
+        <div style="color:var(--accent2);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:8px;font-size:12px">Nahar Tipi</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.8">
+          Standard nahar: 70.8 ort. bal.<br>
+          Free/Reduced: 62.2 — fərq 8.6 bal.<br>
+          Sosial-iqtisadi göstərici kimi güclü predictor.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const D = {
+  gender: { male:{math:68.7,reading:65.5,writing:63.3}, female:{math:63.6,reading:72.6,writing:72.5} },
+  prep: { completed:{math:69.7,reading:73.9,writing:74.4}, none:{math:64.1,reading:66.5,writing:64.5} },
+  edu: { 'some high school':65.1,'high school':63.1,"associate's degree":69.6,'some college':68.5,"bachelor's degree":71.9,"master's degree":73.6 },
+  grade: { 'A (90+)':52,'B (80-89)':146,'C (70-79)':261,'D (60-69)':256,'F (<60)':285 },
+  group: { 'group A':63.0,'group B':65.5,'group C':67.1,'group D':69.2,'group E':72.8 },
+  lunch: { standard:70.8,'free/reduced':62.2 },
+  matrix: [{lunch:'standard',test_prep:'completed',avg:75.5},{lunch:'standard',test_prep:'none',avg:68.3},{lunch:'free/reduced',test_prep:'completed',avg:67.8},{lunch:'free/reduced',test_prep:'none',avg:58.9}],
+  pass: { male:{math:73.9,reading:66.2,writing:61.2}, female:{math:62.0,reading:82.4,writing:81.9} }
+};
+
+const cfg = (type, data, options={}) => ({ type, data, options: { responsive:true, maintainAspectRatio:true, plugins:{legend:{labels:{color:'#94a3b8',font:{size:11,family:'Space Mono'}}},tooltip:{backgroundColor:'#111827',titleColor:'#e2e8f0',bodyColor:'#94a3b8',borderColor:'#1e2d45',borderWidth:1}}, scales: type !== 'pie' && type !== 'doughnut' ? { x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2d45'}}, y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2d45'}} } : undefined, ...options } });
+
+// Gender chart
+new Chart(document.getElementById('genderChart'), cfg('bar', {
+  labels:['Riyaziyyat','Oxuma','Yazı'],
+  datasets:[
+    {label:'Kişi', data:[D.gender.male.math,D.gender.male.reading,D.gender.male.writing], backgroundColor:'rgba(59,130,246,0.8)', borderRadius:6},
+    {label:'Qadın', data:[D.gender.female.math,D.gender.female.reading,D.gender.female.writing], backgroundColor:'rgba(244,114,182,0.8)', borderRadius:6}
+  ]
+}, { scales:{ y:{ min:55, ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} }, x:{ ticks:{color:'#64748b'}, grid:{color:'transparent'} } } }));
+
+// Prep chart
+new Chart(document.getElementById('prepChart'), cfg('bar', {
+  labels:['Riyaziyyat','Oxuma','Yazı'],
+  datasets:[
+    {label:'Tamamladı', data:[D.prep.completed.math,D.prep.completed.reading,D.prep.completed.writing], backgroundColor:'rgba(52,211,153,0.8)', borderRadius:6},
+    {label:'Tamamlamadı', data:[D.prep.none.math,D.prep.none.reading,D.prep.none.writing], backgroundColor:'rgba(251,191,36,0.8)', borderRadius:6}
+  ]
+}, { scales:{ y:{ min:55, ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} }, x:{ ticks:{color:'#64748b'}, grid:{color:'transparent'} } } }));
+
+// Edu chart
+const eduKeys = Object.keys(D.edu);
+new Chart(document.getElementById('eduChart'), cfg('bar', {
+  labels: eduKeys.map(k=>k.replace("associate's","assoc.")),
+  datasets:[{ label:'Ort. Bal', data:eduKeys.map(k=>D.edu[k]),
+    backgroundColor: eduKeys.map(v=>D.edu[v]>=67.5?'rgba(59,130,246,0.8)':'rgba(244,114,182,0.8)'),
+    borderRadius:6 }]
+}, { indexAxis:'y', scales:{ x:{ min:58, ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} }, y:{ ticks:{color:'#64748b',font:{size:10}}, grid:{color:'transparent'} } }, plugins:{legend:{display:false}} }));
+
+// Grade doughnut
+const gradeColors = ['#34d399','#3b82f6','#a78bfa','#fbbf24','#f472b6'];
+new Chart(document.getElementById('gradeChart'), {
+  type:'doughnut',
+  data:{ labels:Object.keys(D.grade), datasets:[{ data:Object.values(D.grade), backgroundColor:gradeColors, borderColor:'#111827', borderWidth:3, hoverOffset:8 }] },
+  options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{ position:'right', labels:{color:'#94a3b8',font:{size:11},padding:12} }, tooltip:{backgroundColor:'#111827',titleColor:'#e2e8f0',bodyColor:'#94a3b8',borderColor:'#1e2d45',borderWidth:1} }, cutout:'60%' }
+});
+
+// Group chart
+const grpKeys = Object.keys(D.group);
+new Chart(document.getElementById('groupChart'), cfg('bar', {
+  labels:grpKeys,
+  datasets:[{label:'Orta Bal',data:grpKeys.map(k=>D.group[k]),backgroundColor:['rgba(244,114,182,0.8)','rgba(251,191,36,0.8)','rgba(167,139,250,0.8)','rgba(59,130,246,0.8)','rgba(52,211,153,0.8)'],borderRadius:6}]
+}, { scales:{ y:{min:58,ticks:{color:'#64748b'},grid:{color:'#1e2d45'}}, x:{ticks:{color:'#64748b'},grid:{color:'transparent'}} }, plugins:{legend:{display:false}} }));
+
+// Lunch chart
+new Chart(document.getElementById('lunchChart'), cfg('bar', {
+  labels:['Standard','Free/Reduced'],
+  datasets:[{label:'Orta Bal',data:[70.8,62.2],backgroundColor:['rgba(59,130,246,0.8)','rgba(244,114,182,0.8)'],borderRadius:6}]
+}, { scales:{ y:{min:55,ticks:{color:'#64748b'},grid:{color:'#1e2d45'}}, x:{ticks:{color:'#64748b'},grid:{color:'transparent'}} }, plugins:{legend:{display:false}} }));
+
+// Pass chart
+new Chart(document.getElementById('passChart'), cfg('bar', {
+  labels:['Riyaziyyat','Oxuma','Yazı'],
+  datasets:[
+    {label:'Kişi',data:[D.pass.male.math,D.pass.male.reading,D.pass.male.writing],backgroundColor:'rgba(59,130,246,0.8)',borderRadius:4},
+    {label:'Qadın',data:[D.pass.female.math,D.pass.female.reading,D.pass.female.writing],backgroundColor:'rgba(244,114,182,0.8)',borderRadius:4}
+  ]
+}, { scales:{ y:{min:50,max:90,ticks:{color:'#64748b',callback:v=>v+'%'},grid:{color:'#1e2d45'}}, x:{ticks:{color:'#64748b'},grid:{color:'transparent'}} } }));
+
+// Matrix chart
+new Chart(document.getElementById('matrixChart'), cfg('bar', {
+  labels: D.matrix.map(d=>d.lunch+' + '+d.test_prep),
+  datasets:[{label:'Orta Bal',data:D.matrix.map(d=>d.avg),backgroundColor:['rgba(52,211,153,0.8)','rgba(59,130,246,0.8)','rgba(251,191,36,0.8)','rgba(244,114,182,0.8)'],borderRadius:6}]
+}, { indexAxis:'y', scales:{ x:{min:50,ticks:{color:'#64748b'},grid:{color:'#1e2d45'}}, y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'transparent'}} }, plugins:{legend:{display:false}} }));
+
+// Scatter chart
+const scatterData = [{"math_score":91,"reading_score":86,"gender":"female"},{"math_score":53,"reading_score":66,"gender":"female"},{"math_score":80,"reading_score":73,"gender":"male"},{"math_score":74,"reading_score":77,"gender":"male"},{"math_score":84,"reading_score":83,"gender":"male"},{"math_score":81,"reading_score":75,"gender":"male"},{"math_score":69,"reading_score":70,"gender":"male"},{"math_score":54,"reading_score":61,"gender":"female"},{"math_score":87,"reading_score":73,"gender":"male"},{"math_score":51,"reading_score":54,"gender":"male"},{"math_score":45,"reading_score":47,"gender":"male"},{"math_score":30,"reading_score":26,"gender":"male"},{"math_score":67,"reading_score":80,"gender":"female"},{"math_score":49,"reading_score":65,"gender":"female"},{"math_score":85,"reading_score":81,"gender":"male"},{"math_score":65,"reading_score":78,"gender":"female"},{"math_score":53,"reading_score":52,"gender":"male"},{"math_score":55,"reading_score":46,"gender":"male"},{"math_score":48,"reading_score":58,"gender":"female"},{"math_score":56,"reading_score":65,"gender":"female"},{"math_score":79,"reading_score":72,"gender":"male"},{"math_score":43,"reading_score":51,"gender":"female"},{"math_score":45,"reading_score":73,"gender":"female"},{"math_score":36,"reading_score":53,"gender":"female"},{"math_score":80,"reading_score":79,"gender":"male"},{"math_score":80,"reading_score":75,"gender":"male"},{"math_score":68,"reading_score":74,"gender":"male"},{"math_score":40,"reading_score":59,"gender":"female"},{"math_score":34,"reading_score":48,"gender":"female"},{"math_score":49,"reading_score":58,"gender":"female"},{"math_score":62,"reading_score":61,"gender":"male"},{"math_score":71,"reading_score":61,"gender":"male"},{"math_score":62,"reading_score":63,"gender":"male"},{"math_score":76,"reading_score":71,"gender":"male"},{"math_score":84,"reading_score":77,"gender":"male"},{"math_score":45,"reading_score":53,"gender":"female"},{"math_score":77,"reading_score":78,"gender":"male"},{"math_score":69,"reading_score":77,"gender":"female"},{"math_score":73,"reading_score":78,"gender":"female"},{"math_score":0,"reading_score":17,"gender":"female"},{"math_score":82,"reading_score":75,"gender":"male"},{"math_score":65,"reading_score":66,"gender":"male"},{"math_score":67,"reading_score":61,"gender":"male"},{"math_score":54,"reading_score":63,"gender":"female"},{"math_score":90,"reading_score":87,"gender":"male"},{"math_score":59,"reading_score":63,"gender":"female"},{"math_score":74,"reading_score":70,"gender":"male"},{"math_score":29,"reading_score":29,"gender":"female"},{"math_score":89,"reading_score":88,"gender":"male"},{"math_score":75,"reading_score":82,"gender":"female"},{"math_score":71,"reading_score":75,"gender":"male"},{"math_score":64,"reading_score":76,"gender":"female"},{"math_score":79,"reading_score":79,"gender":"male"},{"math_score":48,"reading_score":56,"gender":"female"},{"math_score":69,"reading_score":73,"gender":"female"},{"math_score":69,"reading_score":74,"gender":"female"},{"math_score":88,"reading_score":78,"gender":"male"},{"math_score":58,"reading_score":54,"gender":"male"},{"math_score":87,"reading_score":85,"gender":"male"},{"math_score":85,"reading_score":90,"gender":"female"},{"math_score":46,"reading_score":41,"gender":"male"},{"math_score":71,"reading_score":84,"gender":"female"},{"math_score":81,"reading_score":77,"gender":"female"},{"math_score":58,"reading_score":61,"gender":"female"},{"math_score":84,"reading_score":89,"gender":"male"},{"math_score":66,"reading_score":74,"gender":"female"},{"math_score":55,"reading_score":71,"gender":"female"},{"math_score":59,"reading_score":53,"gender":"male"},{"math_score":58,"reading_score":63,"gender":"female"},{"math_score":82,"reading_score":95,"gender":"female"},{"math_score":66,"reading_score":63,"gender":"male"},{"math_score":81,"reading_score":88,"gender":"female"},{"math_score":58,"reading_score":57,"gender":"male"},{"math_score":37,"reading_score":57,"gender":"female"},{"math_score":63,"reading_score":60,"gender":"male"},{"math_score":77,"reading_score":76,"gender":"male"},{"math_score":85,"reading_score":86,"gender":"female"},{"math_score":57,"reading_score":56,"gender":"male"},{"math_score":48,"reading_score":66,"gender":"female"},{"math_score":51,"reading_score":52,"gender":"male"},{"math_score":63,"reading_score":61,"gender":"male"},{"math_score":45,"reading_score":37,"gender":"male"},{"math_score":83,"reading_score":78,"gender":"male"},{"math_score":60,"reading_score":72,"gender":"female"},{"math_score":63,"reading_score":71,"gender":"male"},{"math_score":62,"reading_score":67,"gender":"female"},{"math_score":68,"reading_score":78,"gender":"female"},{"math_score":60,"reading_score":70,"gender":"female"},{"math_score":77,"reading_score":90,"gender":"female"},{"math_score":28,"reading_score":23,"gender":"male"},{"math_score":79,"reading_score":81,"gender":"male"},{"math_score":100,"reading_score":92,"gender":"female"},{"math_score":69,"reading_score":58,"gender":"male"},{"math_score":66,"reading_score":77,"gender":"male"},{"math_score":19,"reading_score":38,"gender":"female"},{"math_score":75,"reading_score":68,"gender":"male"},{"math_score":60,"reading_score":63,"gender":"male"},{"math_score":58,"reading_score":70,"gender":"female"},{"math_score":69,"reading_score":80,"gender":"female"}];
+
+const male_pts = scatterData.filter(d=>d.gender==='male').map(d=>({x:d.math_score,y:d.reading_score}));
+const female_pts = scatterData.filter(d=>d.gender==='female').map(d=>({x:d.math_score,y:d.reading_score}));
+new Chart(document.getElementById('scatterChart'), {
+  type:'scatter',
+  data:{datasets:[
+    {label:'Kişi',data:male_pts,backgroundColor:'rgba(59,130,246,0.5)',pointRadius:4,pointHoverRadius:6},
+    {label:'Qadın',data:female_pts,backgroundColor:'rgba(244,114,182,0.5)',pointRadius:4,pointHoverRadius:6}
+  ]},
+  options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{backgroundColor:'#111827',titleColor:'#e2e8f0',bodyColor:'#94a3b8',borderColor:'#1e2d45',borderWidth:1}},scales:{x:{title:{display:true,text:'Riyaziyyat',color:'#64748b'},ticks:{color:'#64748b'},grid:{color:'#1e2d45'}},y:{title:{display:true,text:'Oxuma',color:'#64748b'},ticks:{color:'#64748b'},grid:{color:'#1e2d45'}}}}
+});
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['overview','breakdown','scatter','sql','python'];
+    t.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>{
+    p.classList.toggle('active', p.id==='panel-'+name);
+  });
+}
+</script>
+</body>
+</html>
